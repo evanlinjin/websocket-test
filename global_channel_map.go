@@ -5,46 +5,43 @@ import (
 	"sync"
 )
 
-// GlobalChannelMap is a global relay for all messages.
-type GlobalChannelMap struct {
+// MessageChannel is a global relay for all messages.
+type MessageChannel struct {
 	sync.Mutex
-	cMap map[string]chan string
-	msgQ chan string
-	stop chan bool
+	members map[string]chan string
 }
 
-// MakeGlobalChannelMap makes a GlobalChannelMap.
-func MakeGlobalChannelMap() (m GlobalChannelMap) {
-	m.cMap = make(map[string]chan string)
-	m.stop = make(chan bool)
+// MakeMessageChannel makes a MessageChannel.
+func MakeMessageChannel() (m MessageChannel) {
+	m.members = make(map[string]chan string)
 	return
 }
 
-// AddChannel adds a channel to GCM.
-func (m *GlobalChannelMap) AddChannel(remoteAdd string, msgChan chan string) error {
-	// m.Lock()
-	// defer m.Unlock()
-	if _, got := m.cMap[remoteAdd]; got {
-		return fmt.Errorf("an entry already exists for '%s'", remoteAdd)
+// AddMember adds a member from MessageChannel.
+func (m *MessageChannel) AddMember(MemberID string, privateChan chan string) error {
+	m.Lock()
+	defer m.Unlock()
+	if _, got := m.members[MemberID]; got {
+		return fmt.Errorf("an entry already exists for '%s'", MemberID)
 	}
-	m.cMap[remoteAdd] = msgChan
-	fmt.Printf("[GSM] CHANNEL COUNT: %v \n", len(m.cMap))
+	m.members[MemberID] = privateChan
+	fmt.Printf("[MessageChannel] MEMBER COUNT: %v \n", len(m.members))
 	return nil
 }
 
-// RemoveChannel removes a channel from GCM.
-func (m *GlobalChannelMap) RemoveChannel(remoteAdd string) {
-	// m.Lock()
-	// defer m.Unlock()
-	delete(m.cMap, remoteAdd)
-	fmt.Printf("[GSM] CHANNEL COUNT: %v \n", len(m.cMap))
-}
-
-// SendMessage sends message to all channels.
-func (m *GlobalChannelMap) SendMessage(msg string) {
+// RemoveMember removes a member from MessageChannel.
+func (m *MessageChannel) RemoveMember(MemberID string) {
 	m.Lock()
 	defer m.Unlock()
-	for _, v := range m.cMap {
+	delete(m.members, MemberID)
+	fmt.Printf("[MessageChannel] MEMBER COUNT: %v \n", len(m.members))
+}
+
+// SendMessage sends message to all members of MessageChannel.
+func (m *MessageChannel) SendMessage(msg string) {
+	m.Lock()
+	defer m.Unlock()
+	for _, v := range m.members {
 		v <- msg
 	}
 }

@@ -20,18 +20,17 @@ func main() {
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
 		}
-		gcm = MakeGlobalChannelMap()
+		mc = MakeMessageChannel()
 	)
-	// go gcm.RunService()
 
-	http.HandleFunc("/", makeHandler(&upg, &gcm))
+	http.HandleFunc("/", makeHandler(&upg, &mc))
 
 	if e := http.ListenAndServeTLS(":8182", "cert.pem", "key.pem", nil); e != nil {
 		panic(e)
 	}
 }
 
-func makeHandler(upg *websocket.Upgrader, gcm *GlobalChannelMap) func(http.ResponseWriter, *http.Request) {
+func makeHandler(upg *websocket.Upgrader, mc *MessageChannel) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		wsc, e := upg.Upgrade(w, r, nil)
 		if e != nil {
@@ -48,8 +47,8 @@ func makeHandler(upg *websocket.Upgrader, gcm *GlobalChannelMap) func(http.Respo
 
 		go func() {
 			msgChan := make(chan string)
-			gcm.AddChannel(r.RemoteAddr, msgChan)
-			defer gcm.RemoveChannel(r.RemoteAddr)
+			mc.AddMember(r.RemoteAddr, msgChan)
+			defer mc.RemoveMember(r.RemoteAddr)
 
 			for {
 				select {
@@ -72,7 +71,7 @@ func makeHandler(upg *websocket.Upgrader, gcm *GlobalChannelMap) func(http.Respo
 				fmt.Println(e)
 				return
 			}
-			go gcm.SendMessage(fmt.Sprintf("%s", data))
+			go mc.SendMessage(fmt.Sprintf("%s", data))
 		}
 	}
 }
